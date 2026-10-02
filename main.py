@@ -311,17 +311,13 @@ LANDMARK_INFO = {
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Startup: Load model (via utils) and Index
+    # Startup: Load FAISS index and initialize User DB quickly (< 1 sec)
     try:
-        # Trigger model load with a valid dummy image
-        dummy_img = Image.new('RGB', (224, 224), color='white')
-        image_to_embedding(dummy_img) 
-        print("Model loaded and warmed up.")
+        load_index_and_metadata()
+        init_user_db()
+        print("Application initialized successfully.")
     except Exception as e:
-        print(f"Warning: Model warmup failed: {e}")
-
-    load_index_and_metadata()
-    init_user_db()
+        print(f"Warning during initialization: {e}")
     yield
     # Clean up (none needed yet)
 

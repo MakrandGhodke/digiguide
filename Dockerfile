@@ -26,6 +26,9 @@ RUN pip install --no-cache-dir torch torchvision --index-url https://download.py
 COPY --chown=user requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+# Pre-cache CLIP weights during Docker build (build environment has 8+ GB RAM)
+RUN python -c "from transformers import CLIPModel, CLIPProcessor; CLIPModel.from_pretrained('openai/clip-vit-base-patch32'); CLIPProcessor.from_pretrained('openai/clip-vit-base-patch32')"
+
 # Copy source code and indexed assets
 COPY --chown=user . .
 

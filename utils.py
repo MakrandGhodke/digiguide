@@ -1,3 +1,4 @@
+import gc
 import torch
 from transformers import CLIPModel, CLIPProcessor
 from PIL import Image, ImageOps
@@ -15,10 +16,20 @@ def get_model_and_processor():
     if _model is None:
         print(f"Loading model {MODEL_NAME} to {device}...")
         try:
-            _model = CLIPModel.from_pretrained(MODEL_NAME, use_safetensors=True).to(device)
+            _model = CLIPModel.from_pretrained(
+                MODEL_NAME, 
+                use_safetensors=True,
+                low_cpu_mem_usage=True
+            ).to(device)
+            # Free unused text encoder to stay well within 512MB RAM
+            if hasattr(_model, "text_model"):
+                del _model.text_model
+            if hasattr(_model, "text_projection"):
+                del _model.text_projection
+            gc.collect()
+
             _processor = CLIPProcessor.from_pretrained(MODEL_NAME)
         except Exception as e:
-
             print(f"Failed to load model: {e}")
             import traceback
             traceback.print_exc()
