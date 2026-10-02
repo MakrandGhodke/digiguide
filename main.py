@@ -340,592 +340,19 @@ app.add_middleware(
 # Serve static files (uploaded images)
 app.mount("/static", StaticFiles(directory=DATASET_DIR), name="static")
 
-
 # ---------------------------------------------------------
 # AUTH ENDPOINTS
 # ---------------------------------------------------------
 @app.post("/auth/signup")
 def signup(request: SignUpRequest):
-    users = load_users()
-    if request.email in users:
-        raise HTTPException(status_code=400, detail="Email already registered")
-    
-    # Hash password
-    hashed = bcrypt.hashpw(request.password.encode('utf-8'), bcrypt.gensalt())
-    
-    users[request.email] = {
-        "name": request.name,
-        "password": hashed.decode('utf-8'),
-        "created_at": str(datetime.utcnow())
-    }
-    save_users(users)
-    
-    # Auto login
-    access_token = create_access_token({"sub": request.email})
-    return {"access_token": access_token, "token_type": "bearer", "name": request.name}
-
-@app.post("/auth/signin")
-def signin(request: SignInRequest):
-    users = load_users()
-    user = users.get(request.email)
-    
-    if not user:
-         raise HTTPException(status_code=401, detail="Invalid credentials")
-         
-    # Verify password
-    if not bcrypt.checkpw(request.password.encode('utf-8'), user["password"].encode('utf-8')):
-         raise HTTPException(status_code=401, detail="Invalid credentials")
-    
-    access_token = create_access_token({"sub": request.email})
-    return {"access_token": access_token, "token_type": "bearer", "name": user["name"]}
-
-@app.get("/auth/me")
-def get_me(token: str = Depends(security)):
-    try:
-        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
-        email = payload.get("sub")
-        users = load_users()
-        user = users.get(email)
-        if user:
-            return {"email": email, "name": user["name"]}
-    except:
-        pass
-    raise HTTPException(status_code=401, detail="Invalid token")
-
-
-# ---------------------------------------------------------
-# WEATHER ENDPOINT (Mock)
-# ---------------------------------------------------------
-@app.get("/weather")
-def get_weather(lat: float, lon: float):
-    # ... (Weather logic remains unchanged) ...
-    try:
-        # Open-Meteo API (Free, no key)
-        url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current_weather=true"
-        print(f"DEBUG: Fetching weather from {url}")
-        response = requests.get(url, timeout=5)
-        response.raise_for_status()
-        data = response.json()
-        print(f"DEBUG: Weather data received: {data.get('current_weather')}")
-        
-        current = data.get('current_weather', {})
-        temp = current.get('temperature', 0)
-        weather_code = current.get('weathercode', 0)
-        
-        # Approximate humidity (not in current_weather, mock it or get from hourly)
-        humidity = 65 
-
-        # Map WMO codes to text/icon
-        # 0=Clear, 1-3=Cloudy, 51-67=Drizzle/Rain, 71-77=Snow, 95-99=Thunderstorm
-        weather_map = {
-            0: ("Clear Sky", "☀️"),
-            1: ("Mainly Clear", "🌤️"),
-            2: ("Partly Cloudy", "⛅"),
-            3: ("Overcast", "☁️"),
-            45: ("Foggy", "🌫️"),
-            48: ("Rime Fog", "🌫️"),
-            51: ("Light Drizzle", "🌦️"),
-            53: ("Drizzle", "🌦️"),
-            55: ("Heavy Drizzle", "🌧️"),
-            61: ("Light Rain", "🌦️"),
-            63: ("Rain", "🌧️"),
-            65: ("Heavy Rain", "🌧️"),
-            71: ("Light Snow", "🌨️"),
-            73: ("Snow", "❄️"),
-            75: ("Heavy Snow", "❄️"),
-            80: ("Rain Showers", "🌦️"),
-            81: ("Rain Showers", "🌦️"),
-            82: ("Heavy Showers", "🌧️"),
-            95: ("Thunderstorm", "⛈️"),
-        }
-        
-        condition, icon = weather_map.get(weather_code, ("Unknown", "🌡️"))
-        
-        # Generate visit recommendation based on weather
-        if weather_code in [0, 1]:
-            recommendation = "Perfect weather for outdoor sightseeing! Don't forget sunscreen."
-            best_time = "Morning (9-11 AM) or Late Afternoon (4-6 PM)"
-            rating = "Excellent"
-        elif weather_code in [2]:
-            recommendation = "Great conditions for exploring. Enjoy the pleasant weather!"
-            best_time = "Any time during daylight hours"
-            rating = "Very Good"
-        elif weather_code in [3, 45, 48]:
-            recommendation = "Good for visiting. Overcast skies provide natural shade."
-            best_time = "Midday is fine - no harsh sun"
-            rating = "Good"
-        elif weather_code in [51, 53, 55, 61, 63, 80, 81]:
-            recommendation = "Light rain expected. Bring an umbrella for outdoor sites."
-            best_time = "Check for rain breaks or visit covered areas"
-            rating = "Fair"
-        elif weather_code in [65, 82, 95]:
-            recommendation = "Heavy weather expected. Consider indoor attractions today."
-            best_time = "Wait for better conditions or visit museums"
-            rating = "Poor"
-        elif weather_code in [71, 73, 75]:
-            recommendation = "Snowy conditions. Bundle up if visiting outdoor landmarks!"
-            best_time = "Midday when it's warmest"
-            rating = "Moderate"
-        else:
-            recommendation = "Check local conditions before your visit."
-            best_time = "Flexible"
-            rating = "Moderate"
-        
-        return {
-            "temperature": temp,
-            "condition": condition,
-            "icon": icon,
-            "humidity": humidity,
-            "recommendation": recommendation,
-            "bestTime": best_time,
-            "rating": rating
-        }
-        
-    except Exception as e:
-        print(f"Weather API error: {e}")
-        # Fallback response
-        return {
-            "temperature": 15,
-            "condition": "Unknown",
-            "icon": "🌡️",
-            "humidity": 50,
-            "recommendation": "Weather data unavailable. Check local forecasts.",
-            "bestTime": "Flexible",
-            "rating": "Unknown"
-        }
-
-@app.get("/landmarks")
-def get_landmarks():
-    """Returns a list of all known landmarks for the search bar."""
-    results = []
-    for key, info in LANDMARK_INFO.items():
-        if key == "unknown": continue
-        
-        # Find an image asset for this landmark from metadata
-        img_asset = ""
-        for m_id, m_data in metadata.items():
-            if m_data['landmark_name'] == key:
-                img_asset = f"{key}/{m_data['filename']}"
-                break
-        
-        results.append({
-            "id": key,
-            "name": info['name'],
-            "shortDescription": info['short_description'],
-            "longDescription": info['long_description'],
-            "history": info.get('history', 'No history available.'),
-            "facts": info.get('facts', []),
-            "speechText": info.get('speech_text', ''),
-            "lat": info['lat'],
-            "lng": info['lon'],
-            "imageAsset": img_asset,
-            "matchType": "list",
-            "distance": 0.0,
-            "score": 1.0,
-            "city": info.get('city', 'Unknown City'),
-            "country": info.get('country', 'Unknown Country'),
-            "category": info.get('category', 'none')
-        })
-    return {"landmarks": results}
-
-@app.post("/nearby")
-def get_nearby_landmarks(
-    latitude: float = Form(...),
-    longitude: float = Form(...)
-):
-    """Returns sorted list of nearby landmarks for Explore tab."""
-    from math import radians, cos, sin, asin, sqrt
-    def haversine(lon1, lat1, lon2, lat2):
-        lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-        dlon = lon2 - lon1 
-        dlat = lat2 - lat1 
-        a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-        c = 2 * asin(sqrt(a)) 
-        r = 6371 
-        return c * r
-
-    results = []
-    for key, info in LANDMARK_INFO.items():
-        if key == "unknown": continue
-        
-        l_lat = info.get('lat')
-        l_lon = info.get('lon')
-        
-        dist = 0.0
-        if l_lat and l_lon:
-            dist = haversine(longitude, latitude, l_lon, l_lat)
-        
-        # Find image asset from metadata
-        img_asset = ""
-        for m_id, m_data in metadata.items():
-             if m_data['landmark_name'] == key:
-                 img_asset = f"{key}/{m_data['filename']}"
-                 break
-        
-        results.append({
-            "id": key,
-            "name": info['name'],
-            "shortDescription": info['short_description'],
-            "longDescription": info['long_description'],
-            "history": info.get('history', 'No history available.'),
-            "facts": info.get('facts', []),
-            "speechText": info.get('speech_text', ''),
-            "lat": l_lat,
-            "lng": l_lon,
-            "imageAsset": img_asset,
-            "matchType": "location",
-            "distance": round(dist, 2), # Distance in km
-            "score": 1.0,
-            "city": info.get('city', 'Unknown City'),
-            "country": info.get('country', 'Unknown Country'),
-            "category": info.get('category', 'none')
-        })
-    
-    # Sort by distance
-    results.sort(key=lambda x: x['distance'])
-    
-    return {"landmarks": results}
-
-@app.post("/predict")
-async def predict_endpoint(
-    file: UploadFile = File(...),
-    latitude: float = Form(None),
-    longitude: float = Form(None)
-):
-    if index is None or not metadata:
-        raise HTTPException(status_code=500, detail="Server not ready: Index not loaded.")
-
-    try:
-        print(f"DEBUG: Received request with lat={latitude}, lon={longitude}")
-        
-        # 1. ALWAYS Save Input Image First (for feedback)
-        contents = await file.read()
-        image_id = str(uuid.uuid4())
-        # Use simple forward slash or os.sep
-        temp_path = os.path.join(TEMP_DIR, f"{image_id}.jpg")
-        with open(temp_path, "wb") as f:
-            f.write(contents)
-        print(f"Saved temp image: {temp_path}")
-
-        # 2. Process Image
-        image = Image.open(io.BytesIO(contents)).convert("RGB")
-        image = ImageOps.exif_transpose(image) # Fix for mobile EXIF orientation
-        
-        # 3. Visual Search with Rotation Robustness
-        # REBUILT INDEX: Exact matches now score 1.0. Similar ~0.95.
-        VISUAL_THRESHOLD = 0.85  # TIGHTENED: Very safe now that index is fixed.
-        LOCATION_THRESHOLD_KM = 0.150 # 150 meters
-        k = 5 
-        rotations = [0, 90, 180, 270] 
-        best_overall_match_info = None # (idx, score, angle, img)
-        max_similarity = -1.0          
-
-        # Loop through rotations to find the best (highest) similarity
-        for angle in rotations:
-            current_img = image if angle == 0 else image.rotate(angle, expand=True)
-            
-            # Embed
-            query_emb = image_to_embedding(current_img).astype('float32')
-            
-            # Search
-            distances, indices = index.search(query_emb, k)
-            idx = int(indices[0][0])
-            l2_distance = float(distances[0][0])
-            
-            # Convert L2 Distance to Cosine Similarity (0 to 1)
-            # Correct Formula: S = 1 - d^2 / 2
-            similarity = max(0.0, 1.0 - (l2_distance ** 2) / 2.0)
-            
-            print(f"DEBUG: Rotation {angle}°: index={idx}, dist={l2_distance:.4f} -> similarity={similarity:.4f}")
-
-            # Check if this rotation hits the Similarity Threshold
-            if similarity >= VISUAL_THRESHOLD and idx in metadata:
-                 if similarity > max_similarity:
-                     max_similarity = similarity
-                     best_overall_match_info = (idx, similarity, angle, current_img)
-
-        # Helper function for distance
-        from math import radians, cos, sin, asin, sqrt
-        def haversine(lon1, lat1, lon2, lat2):
-            lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
-            dlon = lon2 - lon1 
-            dlat = lat2 - lat1 
-            a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
-            c = 2 * asin(sqrt(a)) 
-            r = 6371 
-            return c * r
-
-        # ---------------------------------------------------------
-        # PRIORITY 1: VISUAL MATCH
-        # ---------------------------------------------------------
-        if best_overall_match_info:
-            idx, similarity, angle, matched_img = best_overall_match_info
-            match = metadata[idx]
-            key = match['landmark_name']
-            info = LANDMARK_INFO.get(key, LANDMARK_INFO["unknown"])
-            
-            print(f"DEBUG: Returning VISUAL match: {key} (Similarity: {similarity:.4f}, Angle: {angle}°)")
-
-            if angle != 0:
-                print(f"DEBUG: Overwriting temp image with {angle}° rotated version.")
-                matched_img.save(temp_path)
-
-            dist = 0.0
-            if latitude and longitude and info.get('lat') and info.get('lon'):
-                dist = haversine(longitude, latitude, info['lon'], info['lat'])
-            
-            # Verify image existence (Stale index protection)
-            img_filename = match['filename']
-            full_path = os.path.join(DATASET_DIR, key, img_filename)
-            if not os.path.exists(full_path):
-                 print(f"WARNING: Matched image {img_filename} not found on disk. Searching fallback...")
-                 for m_id, m_data in metadata.items():
-                     if m_data['landmark_name'] == key:
-                         cand_path = os.path.join(DATASET_DIR, key, m_data['filename'])
-                         if os.path.exists(cand_path):
-                             img_filename = m_data['filename']
-                             print(f"Fallback found: {img_filename}")
-                             break
-            
-            return {"predictions": [{
-                "id": key,
-                "name": info['name'],
-                "shortDescription": info['short_description'],
-                "longDescription": info['long_description'],
-                "history": info.get('history', 'No history available.'),
-                "facts": info.get('facts', []),
-                "speechText": info.get('speech_text', ''),
-                "lat": info['lat'],
-                "lng": info['lon'],
-                "imageAsset": f"{key}/{img_filename}",
-                "score": similarity, 
-                "matchType": "visual",
-                "distance": round(dist, 2),
-                "imageId": image_id,
-                "city": info.get('city', 'Unknown City'),
-                "country": info.get('country', 'Unknown Country'),
-                "category": info.get('category', 'none')
-            }]}
-
-        # ---------------------------------------------------------
-        # PRIORITY 2: STRICT LOCATION MATCH
-        # ---------------------------------------------------------
-        # Logic: If visual failed, but we are VERY close (< 150m) to a known landmark, assume it's that.
-        strict_match_info = None
-        min_dist_strict = LOCATION_THRESHOLD_KM # 0.150 km
-        
-        if latitude is not None and longitude is not None:
-             for key, info in LANDMARK_INFO.items():
-                 if key == "unknown": continue
-                 if info.get('lat') and info.get('lon'):
-                     d = haversine(longitude, latitude, info['lon'], info['lat'])
-                     if d < min_dist_strict:
-                         min_dist_strict = d
-                         strict_match_info = (key, info, d)
-
-        if strict_match_info:
-            key, info, dist = strict_match_info
-            print(f"DEBUG: Returning PROXIMITY match: {key} (Dist: {dist:.3f}km)")
-            
-            # Find image asset
-            img_asset = ""
-            for m_id, m_data in metadata.items():
-                 if m_data['landmark_name'] == key:
-                     img_asset = f"{key}/{m_data['filename']}"
-                     break
-            
-            primary_prediction = {
-                "id": key,
-                "name": info['name'],
-                "shortDescription": info['short_description'],
-                "longDescription": info['long_description'],
-                "history": info.get('history', 'No history available.'),
-                "facts": info.get('facts', []),
-                "speechText": info.get('speech_text', ''),
-                "lat": info['lat'],
-                "lng": info['lon'],
-                "imageAsset": img_asset,
-                "score": 0.5, # Moderate score for location match
-                "matchType": "proximity",
-                "distance": round(dist, 2),
-                "imageId": image_id,
-                "city": info.get('city', 'Unknown City'),
-                "country": info.get('country', 'Unknown Country'),
-                "category": info.get('category', 'none')
-            }
-            
-            # Prepare fallback list (excluding the primary one)
-            candidates = []
-            SEARCH_RADIUS_KM = 50.0 
-            for k_cand, info_cand in LANDMARK_INFO.items():
-                 if k_cand == "unknown" or k_cand == key: continue # Exclude primary
-                 
-                 l_lat = info_cand.get('lat')
-                 l_lon = info_cand.get('lon')
-                 if l_lat and l_lon:
-                     d_cand = haversine(longitude, latitude, l_lon, l_lat)
-                     if d_cand <= SEARCH_RADIUS_KM:
-                         # Asset lookup
-                         c_asset = ""
-                         for m_id, m_data in metadata.items():
-                             if m_data['landmark_name'] == k_cand:
-                                 c_asset = f"{k_cand}/{m_data['filename']}"
-                                 break
-                                 
-                         candidates.append({
-                             "id": k_cand,
-                             "name": info_cand['name'],
-                             "shortDescription": info_cand['short_description'],
-                             "longDescription": info_cand['long_description'],
-                             "history": info_cand.get('history', 'No history available.'),
-                             "facts": info_cand.get('facts', []),
-                             "speechText": info_cand.get('speech_text', ''),
-                             "lat": l_lat,
-                             "lng": l_lon,
-                             "imageAsset": c_asset,
-                             "score": 0.0, 
-                             "matchType": "list",
-                             "distance": round(d_cand, 2),
-                             "imageId": image_id,
-                             "city": info_cand.get('city', 'Unknown City'),
-                             "country": info_cand.get('country', 'Unknown Country'),
-                             "category": info_cand.get('category', 'none')
-                         })
-            
-            candidates.sort(key=lambda x: x['distance'])
-            candidates = candidates[:5]
-            
-            # Return Primary + Candidates
-            return {"predictions": [primary_prediction] + candidates}
-
-        # ---------------------------------------------------------
-        # PRIORITY 3: FALLBACK LIST (Sorted by distance)
-        # ---------------------------------------------------------
-        candidates = []
-        if latitude is not None and longitude is not None:
-             SEARCH_RADIUS_KM = 50.0 # Wide search for fallback suggestions
-             
-             for key, info in LANDMARK_INFO.items():
-                 if key == "unknown": continue
-                 
-                 l_lat = info.get('lat')
-                 l_lon = info.get('lon')
-                 
-                 if l_lat and l_lon:
-                     dist = haversine(longitude, latitude, l_lon, l_lat)
-                     if dist <= SEARCH_RADIUS_KM:
-                         # Find FIRST EXISTING image asset
-                         img_asset = ""
-                         for m_id, m_data in metadata.items():
-                             if m_data['landmark_name'] == key:
-                                 # Verify existence!
-                                 full_path = os.path.join(DATASET_DIR, key, m_data['filename'])
-                                 if os.path.exists(full_path):
-                                     img_asset = f"{key}/{m_data['filename']}"
-                                     break
-                                 
-                         candidates.append({
-                             "id": key,
-                             "name": info['name'],
-                             "shortDescription": info['short_description'],
-                             "longDescription": info['long_description'],
-                             "history": info.get('history', 'No history available.'),
-                             "facts": info.get('facts', []),
-                             "speechText": info.get('speech_text', ''),
-                             "lat": l_lat,
-                             "lng": l_lon,
-                             "imageAsset": img_asset,
-                             "score": 0.0, 
-                             "matchType": "list",
-                             "distance": round(dist, 2),
-                             "imageId": image_id,
-                             "city": info.get('city', 'Unknown City'),
-                             "country": info.get('country', 'Unknown Country'),
-                             "category": info.get('category', 'none')
-                         })
-            
-             # Sort by distance and take top 5
-             candidates.sort(key=lambda x: x['distance'])
-             candidates = candidates[:5]
-
-        # If we have candidates from Priority 3, return them
-        if candidates:
-             print(f"DEBUG: Returning LIST with {len(candidates)} items")
-             return {"predictions": candidates}
-             
-        # If absolutely nothing found (no location, no visual, no nearby), return unknown
-        print(f"DEBUG: Returning UNKNOWN match")
-        info = LANDMARK_INFO["unknown"]
-        return {"predictions": [{
-            "id": "-1",
-            "name": info['name'],
-            "shortDescription": info['short_description'],
-            "longDescription": info['long_description'],
-            "history": info.get('history', 'No history available.'),
-            "facts": info.get('facts', []),
-            "lat": latitude if latitude else 0.0,
-            "lng": longitude if longitude else 0.0,
-            "imageAsset": "",
-            "score": 0.0,
-            "matchType": "none",
-            "distance": 0.0,
-            "imageId": image_id,
-            "city": "Unknown",
-            "country": "Unknown",
-            "category": "none"
-        }]}
-        
-    except Exception as e:
-        print(f"Prediction Error: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-
-
-
-# Mount dataset folder - SMART ENDPOINT
-# Replaces StaticFiles to handle 404s gracefully (Fallback for old history items)
-@app.get("/images/{landmark_name}/{filename}")
-async def serve_image(landmark_name: str, filename: str):
-    base_path = os.path.join(DATASET_DIR, landmark_name)
-    file_path = os.path.join(base_path, filename)
-    
-    # 1. Try to serve exact file
-    if os.path.exists(file_path):
-        return FileResponse(file_path)
-    
-    # 2. If missing, look for ANY valid jpg/png in that folder
-    print(f"WARNING: Image not found: {filename}. Searching fallback in {landmark_name}...")
-    if os.path.exists(base_path):
-        for f in os.listdir(base_path):
-             if f.lower().endswith(('.jpg', '.jpeg', '.png')):
-                 fallback_path = os.path.join(base_path, f)
-                 print(f"Serving fallback: {f}")
-                 return FileResponse(fallback_path)
-                 
-    # 3. If folder empty or missing, 404
-    raise HTTPException(status_code=404, detail="Image not found")
-
-@app.get("/")
-def root():
-    return {"message": "DigiGuide backend running successfully!"}
-
-# =============================================
-# AUTHENTICATION ENDPOINTS
-# =============================================
-
-@app.post("/auth/signup")
-def signup(request: SignUpRequest):
     """Register a new user."""
     users = load_users()
-    
     if request.email in users:
         raise HTTPException(status_code=400, detail="Email already registered")
     
     # Hash password
     hashed = bcrypt.hashpw(request.password.encode('utf-8'), bcrypt.gensalt())
     
-    # Store user
     users[request.email] = {
         "name": request.name,
         "password_hash": hashed.decode('utf-8'),
@@ -935,47 +362,62 @@ def signup(request: SignUpRequest):
     
     # Generate token
     token = create_access_token({"sub": request.email})
-    
     return {
         "access_token": token,
+        "token_type": "bearer",
         "user": {
             "email": request.email,
             "name": request.name
         }
     }
 
+
 @app.post("/auth/signin")
 def signin(request: SignInRequest):
     """Sign in an existing user."""
     users = load_users()
-    
     if request.email not in users:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
     user = users[request.email]
-    
-    # Verify password
-    if not bcrypt.checkpw(request.password.encode('utf-8'), user["password_hash"].encode('utf-8')):
+    # Support both password_hash and legacy password field
+    stored_hash = user.get("password_hash") or user.get("password")
+    if not stored_hash or not bcrypt.checkpw(request.password.encode('utf-8'), stored_hash.encode('utf-8')):
         raise HTTPException(status_code=401, detail="Invalid email or password")
     
-    # Generate token
     token = create_access_token({"sub": request.email})
-    
     return {
         "access_token": token,
+        "token_type": "bearer",
         "user": {
             "email": request.email,
             "name": user.get("name", "")
         }
     }
 
+
+@app.get("/auth/me")
+def get_me(token: HTTPAuthorizationCredentials = Depends(security)):
+    """Get current user details from JWT token."""
+    try:
+        payload = jwt.decode(token.credentials, SECRET_KEY, algorithms=[ALGORITHM])
+        email = payload.get("sub")
+        users = load_users()
+        user = users.get(email)
+        if user:
+            return {"email": email, "name": user.get("name", "")}
+    except Exception:
+        pass
+    raise HTTPException(status_code=401, detail="Invalid or expired token")
+
+
+# ---------------------------------------------------------
+# WEATHER ENDPOINT (Open-Meteo API)
+# ---------------------------------------------------------
 @app.get("/weather")
 def get_weather(lat: float, lon: float):
-    """Returns weather information and visit recommendations using Open-Meteo API (free, no key needed)."""
-    import requests
-    
+    """Returns weather information and visit recommendations using Open-Meteo API."""
     try:
-        # Open-Meteo API - completely free, no API key needed
         url = f"https://api.open-meteo.com/v1/forecast?latitude={lat}&longitude={lon}&current=temperature_2m,relative_humidity_2m,weather_code&timezone=auto"
         response = requests.get(url, timeout=5)
         data = response.json()
@@ -985,8 +427,6 @@ def get_weather(lat: float, lon: float):
         humidity = int(current.get("relative_humidity_2m", 0))
         weather_code = current.get("weather_code", 0)
         
-        # Map WMO weather codes to conditions and icons
-        # https://open-meteo.com/en/docs
         weather_map = {
             0: ("Clear", "☀️"),
             1: ("Mainly Clear", "🌤️"),
@@ -1011,7 +451,6 @@ def get_weather(lat: float, lon: float):
         
         condition, icon = weather_map.get(weather_code, ("Unknown", "🌡️"))
         
-        # Generate visit recommendation based on weather
         if weather_code in [0, 1]:
             recommendation = "Perfect weather for outdoor sightseeing! Don't forget sunscreen."
             best_time = "Morning (9-11 AM) or Late Afternoon (4-6 PM)"
@@ -1053,7 +492,6 @@ def get_weather(lat: float, lon: float):
         
     except Exception as e:
         print(f"Weather API error: {e}")
-        # Fallback response
         return {
             "temperature": 15,
             "condition": "Unknown",
@@ -1064,19 +502,26 @@ def get_weather(lat: float, lon: float):
             "rating": "Unknown"
         }
 
+
+# ---------------------------------------------------------
+# LANDMARKS & DISCOVERY ENDPOINTS
+# ---------------------------------------------------------
 @app.get("/landmarks")
 def get_landmarks():
-    """Returns a list of all known landmarks for the search bar."""
+    """Returns a list of all known landmarks for the search bar and explore screen."""
     results = []
     for key, info in LANDMARK_INFO.items():
-        if key == "unknown": continue
+        if key == "unknown":
+            continue
         
-        # Find an image asset for this landmark from metadata
+        # Find first existing image asset for this landmark from metadata
         img_asset = ""
         for m_id, m_data in metadata.items():
             if m_data['landmark_name'] == key:
-                img_asset = f"{key}/{m_data['filename']}"
-                break
+                full_path = os.path.join(DATASET_DIR, key, m_data['filename'])
+                if os.path.exists(full_path):
+                    img_asset = f"{key}/{m_data['filename']}"
+                    break
         
         results.append({
             "id": key,
@@ -1093,9 +538,11 @@ def get_landmarks():
             "distance": 0.0,
             "score": 1.0,
             "city": info.get('city', 'Unknown City'),
-            "country": info.get('country', 'Unknown Country')
+            "country": info.get('country', 'Unknown Country'),
+            "category": info.get('category', 'none')
         })
     return {"landmarks": results}
+
 
 @app.post("/nearby")
 def get_nearby_landmarks(
@@ -1115,21 +562,24 @@ def get_nearby_landmarks(
 
     results = []
     for key, info in LANDMARK_INFO.items():
-        if key == "unknown": continue
+        if key == "unknown":
+            continue
         
         l_lat = info.get('lat')
         l_lon = info.get('lon')
+        if not l_lat or not l_lon:
+            continue
+            
+        dist = haversine(longitude, latitude, l_lon, l_lat)
         
-        dist = 0.0
-        if l_lat and l_lon:
-            dist = haversine(longitude, latitude, l_lon, l_lat)
-        
-        # Find image asset from metadata
+        # Find first existing image asset
         img_asset = ""
         for m_id, m_data in metadata.items():
-             if m_data['landmark_name'] == key:
-                 img_asset = f"{key}/{m_data['filename']}"
-                 break
+            if m_data['landmark_name'] == key:
+                full_path = os.path.join(DATASET_DIR, key, m_data['filename'])
+                if os.path.exists(full_path):
+                    img_asset = f"{key}/{m_data['filename']}"
+                    break
         
         results.append({
             "id": key,
@@ -1142,18 +592,22 @@ def get_nearby_landmarks(
             "lat": l_lat,
             "lng": l_lon,
             "imageAsset": img_asset,
-            "matchType": "location",
-            "distance": round(dist, 2), # Distance in km
+            "matchType": "list",
+            "distance": round(dist, 2),
             "score": 1.0,
             "city": info.get('city', 'Unknown City'),
-            "country": info.get('country', 'Unknown Country')
+            "country": info.get('country', 'Unknown Country'),
+            "category": info.get('category', 'none')
         })
     
     # Sort by distance
     results.sort(key=lambda x: x['distance'])
-    
     return {"landmarks": results}
 
+
+# ---------------------------------------------------------
+# AI PREDICTION ENDPOINT
+# ---------------------------------------------------------
 @app.post("/predict")
 async def predict_endpoint(
     file: UploadFile = File(...),
@@ -1166,54 +620,43 @@ async def predict_endpoint(
     try:
         print(f"DEBUG: Received request with lat={latitude}, lon={longitude}")
         
-        # 1. ALWAYS Save Input Image First (for feedback)
+        # 1. Save Input Image (for feedback & diagnostics)
         contents = await file.read()
         image_id = str(uuid.uuid4())
-        # Use simple forward slash or os.sep
         temp_path = os.path.join(TEMP_DIR, f"{image_id}.jpg")
         with open(temp_path, "wb") as f:
             f.write(contents)
         print(f"Saved temp image: {temp_path}")
 
-        # 2. Process Image
+        # 2. Process Image with EXIF orientation correction
         image = Image.open(io.BytesIO(contents)).convert("RGB")
-        image = ImageOps.exif_transpose(image) # Fix for mobile EXIF orientation
+        image = ImageOps.exif_transpose(image)
         
-        # 3. Visual Search with Rotation Robustness
-        # REBUILT INDEX: Exact matches now score 1.0. Similar ~0.95.
-        VISUAL_THRESHOLD = 0.85  # TIGHTENED: Very safe now that index is fixed.
-        LOCATION_THRESHOLD_KM = 0.150 # 150 meters
+        # 3. Visual Search with Multi-Rotation Robustness
+        VISUAL_THRESHOLD = 0.85
         k = 5 
-
         rotations = [0, 90, 180, 270] 
-        best_overall_match_info = None # (idx, score, angle, img)
+        best_overall_match_info = None
         max_similarity = -1.0          
 
-        # Loop through rotations to find the best (highest) similarity
         for angle in rotations:
             current_img = image if angle == 0 else image.rotate(angle, expand=True)
-            
-            # Embed
             query_emb = image_to_embedding(current_img).astype('float32')
             
-            # Search
             distances, indices = index.search(query_emb, k)
             idx = int(indices[0][0])
             l2_distance = float(distances[0][0])
             
-            # Convert L2 Distance to Cosine Similarity (0 to 1)
-            # Correct Formula: S = 1 - d^2 / 2
+            # Convert L2 Distance to Cosine Similarity: S = 1 - d^2 / 2
             similarity = max(0.0, 1.0 - (l2_distance ** 2) / 2.0)
-            
             print(f"DEBUG: Rotation {angle}°: index={idx}, dist={l2_distance:.4f} -> similarity={similarity:.4f}")
 
-            # Check if this rotation hits the Similarity Threshold
             if similarity >= VISUAL_THRESHOLD and idx in metadata:
-                 if similarity > max_similarity:
-                     max_similarity = similarity
-                     best_overall_match_info = (idx, similarity, angle, current_img)
+                if similarity > max_similarity:
+                    max_similarity = similarity
+                    best_overall_match_info = (idx, similarity, angle, current_img)
 
-        # Helper function for distance
+        # Distance helper
         from math import radians, cos, sin, asin, sqrt
         def haversine(lon1, lat1, lon2, lat2):
             lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
@@ -1224,9 +667,7 @@ async def predict_endpoint(
             r = 6371 
             return c * r
 
-        # ---------------------------------------------------------
         # PRIORITY 1: VISUAL MATCH
-        # ---------------------------------------------------------
         if best_overall_match_info:
             idx, similarity, angle, matched_img = best_overall_match_info
             match = metadata[idx]
@@ -1243,18 +684,18 @@ async def predict_endpoint(
             if latitude and longitude and info.get('lat') and info.get('lon'):
                 dist = haversine(longitude, latitude, info['lon'], info['lat'])
             
-            # Verify image existence (Stale index protection)
+            # Verify matched image exists on disk (Stale index protection)
             img_filename = match['filename']
             full_path = os.path.join(DATASET_DIR, key, img_filename)
             if not os.path.exists(full_path):
-                 print(f"WARNING: Matched image {img_filename} not found on disk. Searching fallback...")
-                 for m_id, m_data in metadata.items():
-                     if m_data['landmark_name'] == key:
-                         cand_path = os.path.join(DATASET_DIR, key, m_data['filename'])
-                         if os.path.exists(cand_path):
-                             img_filename = m_data['filename']
-                             print(f"Fallback found: {img_filename}")
-                             break
+                print(f"WARNING: Matched image {img_filename} not found on disk. Searching fallback...")
+                for m_id, m_data in metadata.items():
+                    if m_data['landmark_name'] == key:
+                        cand_path = os.path.join(DATASET_DIR, key, m_data['filename'])
+                        if os.path.exists(cand_path):
+                            img_filename = m_data['filename']
+                            print(f"Fallback found: {img_filename}")
+                            break
             
             return {"predictions": [{
                 "id": key,
@@ -1272,70 +713,62 @@ async def predict_endpoint(
                 "distance": round(dist, 2),
                 "imageId": image_id,
                 "city": info.get('city', 'Unknown City'),
-                "country": info.get('country', 'Unknown Country')
+                "country": info.get('country', 'Unknown Country'),
+                "category": info.get('category', 'none')
             }]}
 
-        # ---------------------------------------------------------
-        # PRIORITY 2: STRICT LOCATION MATCH (SKIPPED)
-        # User requested to avoid auto-guessing based on location.
-        # ---------------------------------------------------------
-
-        # ---------------------------------------------------------
-        # PRIORITY 3: FALLBACK LIST (Sorted by distance)
-        # ---------------------------------------------------------
+        # PRIORITY 2: FALLBACK LIST (Sorted by distance when no visual match is found)
         candidates = []
         if latitude is not None and longitude is not None:
-             SEARCH_RADIUS_KM = 50.0 # Wide search for fallback suggestions
-             
-             for key, info in LANDMARK_INFO.items():
-                 if key == "unknown": continue
-                 
-                 l_lat = info.get('lat')
-                 l_lon = info.get('lon')
-                 
-                 if l_lat and l_lon:
-                     dist = haversine(longitude, latitude, l_lon, l_lat)
-                     if dist <= SEARCH_RADIUS_KM:
-                         # Find FIRST EXISTING image asset
-                         img_asset = ""
-                         for m_id, m_data in metadata.items():
-                             if m_data['landmark_name'] == key:
-                                 # Verify existence!
-                                 full_path = os.path.join(DATASET_DIR, key, m_data['filename'])
-                                 if os.path.exists(full_path):
-                                     img_asset = f"{key}/{m_data['filename']}"
-                                     break
-                                 
-                         candidates.append({
-                             "id": key,
-                             "name": info['name'],
-                             "shortDescription": info['short_description'],
-                             "longDescription": info['long_description'],
-                             "history": info.get('history', 'No history available.'),
-                             "facts": info.get('facts', []),
-                             "speechText": info.get('speech_text', ''),
-                             "lat": l_lat,
-                             "lng": l_lon,
-                             "imageAsset": img_asset,
-                             "score": 0.0, 
-                             "matchType": "list",
-                             "distance": round(dist, 2),
-                             "imageId": image_id,
-                             "city": info.get('city', 'Unknown City'),
-                             "country": info.get('country', 'Unknown Country')
-                         })
+            SEARCH_RADIUS_KM = 50.0
             
-             # Sort by distance and take top 5
-             candidates.sort(key=lambda x: x['distance'])
-             candidates = candidates[:5]
+            for key, info in LANDMARK_INFO.items():
+                if key == "unknown":
+                    continue
+                
+                l_lat = info.get('lat')
+                l_lon = info.get('lon')
+                
+                if l_lat and l_lon:
+                    dist = haversine(longitude, latitude, l_lon, l_lat)
+                    if dist <= SEARCH_RADIUS_KM:
+                        img_asset = ""
+                        for m_id, m_data in metadata.items():
+                            if m_data['landmark_name'] == key:
+                                full_path = os.path.join(DATASET_DIR, key, m_data['filename'])
+                                if os.path.exists(full_path):
+                                    img_asset = f"{key}/{m_data['filename']}"
+                                    break
+                                
+                        candidates.append({
+                            "id": key,
+                            "name": info['name'],
+                            "shortDescription": info['short_description'],
+                            "longDescription": info['long_description'],
+                            "history": info.get('history', 'No history available.'),
+                            "facts": info.get('facts', []),
+                            "speechText": info.get('speech_text', ''),
+                            "lat": l_lat,
+                            "lng": l_lon,
+                            "imageAsset": img_asset,
+                            "score": 0.0, 
+                            "matchType": "list",
+                            "distance": round(dist, 2),
+                            "imageId": image_id,
+                            "city": info.get('city', 'Unknown City'),
+                            "country": info.get('country', 'Unknown Country'),
+                            "category": info.get('category', 'none')
+                        })
+            
+            candidates.sort(key=lambda x: x['distance'])
+            candidates = candidates[:5]
 
-        # If we have candidates from Priority 3, return them
         if candidates:
-             print(f"DEBUG: Returning LIST with {len(candidates)} items")
-             return {"predictions": candidates}
-             
-        # If absolutely nothing found (no location, no visual, no nearby), return unknown
-        print(f"DEBUG: Returning UNKNOWN match")
+            print(f"DEBUG: Returning LIST with {len(candidates)} items")
+            return {"predictions": candidates}
+            
+        # PRIORITY 3: UNKNOWN (Nothing found)
+        print("DEBUG: Returning UNKNOWN match")
         info = LANDMARK_INFO["unknown"]
         return {"predictions": [{
             "id": "-1",
@@ -1350,7 +783,10 @@ async def predict_endpoint(
             "score": 0.0,
             "matchType": "unknown",
             "distance": 0.0,
-            "imageId": image_id
+            "imageId": image_id,
+            "city": "Unknown",
+            "country": "Unknown",
+            "category": "none"
         }]}
 
     except Exception as e:
@@ -1358,3 +794,33 @@ async def predict_endpoint(
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ---------------------------------------------------------
+# IMAGE SERVING & ROOT ENDPOINTS
+# ---------------------------------------------------------
+@app.get("/images/{landmark_name}/{filename}")
+async def serve_image(landmark_name: str, filename: str):
+    """Smart image serving endpoint with automatic fallback to any valid image in landmark folder."""
+    base_path = os.path.join(DATASET_DIR, landmark_name)
+    file_path = os.path.join(base_path, filename)
+    
+    # 1. Try to serve exact file
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+    
+    # 2. Fallback to any valid image in that folder
+    print(f"WARNING: Image not found: {filename}. Searching fallback in {landmark_name}...")
+    if os.path.exists(base_path):
+        for f in os.listdir(base_path):
+            if f.lower().endswith(('.jpg', '.jpeg', '.png')):
+                fallback_path = os.path.join(base_path, f)
+                print(f"Serving fallback: {f}")
+                return FileResponse(fallback_path)
+                
+    raise HTTPException(status_code=404, detail="Image not found")
+
+
+@app.get("/")
+def root():
+    return {"message": "DigiGuide backend running successfully!"}
