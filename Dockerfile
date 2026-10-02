@@ -29,8 +29,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code and indexed assets
 COPY --chown=user . .
 
-# Expose standard Hugging Face Spaces port
-EXPOSE 7860
+# Expose ports commonly used by Render (10000), Koyeb/standard (8000), and Hugging Face (7860)
+EXPOSE 8000 7860 10000
 
-# Run FastAPI with uvicorn
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "7860"]
+# Run FastAPI with uvicorn listening on the dynamically assigned PORT (default 8000)
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000}"]

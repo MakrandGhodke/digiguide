@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: digiguide-backend
+    runtime: docker
+    plan: free
+    region: oregon
+    healthCheckPath: /
+    envVars:
+      - key: PYTHONUNBUFFERED
+        value: "1"
