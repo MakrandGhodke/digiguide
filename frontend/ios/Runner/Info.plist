@@ -50,7 +50,7 @@
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
 
-	<!-- 🚀 Added Required Permissions for Camera -->
+	<!-- Camera & Photo Library Permissions -->
 	<key>NSCameraUsageDescription</key>
 	<string>DigiGuide requires camera access to let you capture photos of landmarks.</string>
 
@@ -60,5 +60,18 @@
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>DigiGuide needs photo library access to pick and display images.</string>
 
+	<!-- Location Permissions for GPS & Nearby Audio Guides -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>DigiGuide needs your location to find nearby landmarks and provide walking distances.</string>
+
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>DigiGuide uses your location to automatically trigger audio tour guides as you approach monuments.</string>
+
+	<!-- Allow HTTP connection to local development backend -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<true/>
+	</dict>
 </dict>
 </plist>
