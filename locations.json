@@ -1,0 +1,46 @@
+{
+    "darmstadium": {
+        "lat": 49.8732,
+        "lon": 8.6558
+    },
+    "mathildenhöhe": {
+        "lat": 49.8775,
+        "lon": 8.6675
+    },
+    "orangerie_park": {
+        "lat": 49.8596,
+        "lon": 8.6565
+    },
+    "schloss": {
+        "lat": 49.8728,
+        "lon": 8.6552
+    },
+    "waldspirale": {
+        "lat": 49.8863,
+        "lon": 8.6554
+    },
+    "Hessisches-Landesmuseum": {
+        "lat": 49.8745,
+        "lon": 8.6548
+    },
+    "Luisenplatz": {
+        "lat": 49.8724,
+        "lon": 8.6511
+    },
+    "Staatstheater": {
+        "lat": 49.8688,
+        "lon": 8.6516
+    },
+    "herrengarten": {
+        "lat": 49.8760,
+        "lon": 8.6530
+    },
+    "prinz-emil-garten": {
+        "lat": 49.8580,
+        "lon": 8.6480
+    },
+    "jugendstilbad": {
+        "lat": 49.8727,
+        "lon": 8.6601
+    }
+}
