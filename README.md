@@ -1,3 +1,13 @@
+---
+title: DigiGuide AI Landmark Backend
+emoji: 📸
+colorFrom: blue
+colorTo: indigo
+sdk: docker
+app_port: 7860
+pinned: false
+---
+
 # DigiGuide 📸🗺️
 
 A mobile + AI-powered tourist guide that recognizes historical landmarks through photos and returns detailed information instantly.

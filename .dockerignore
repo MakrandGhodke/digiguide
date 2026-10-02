@@ -1,0 +1,12 @@
+.git
+.github
+.venv
+frontend
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.DS_Store
+*.log
+*.pdf
+build_guide_pdf.py
