@@ -1,7 +1,6 @@
 class Config {
-  // Use the IP address detected earlier
-  // Use localhost for USB Reverse Tunnel
-  static const String baseUrl = 'http://127.0.0.1:8000';
+  // Live Cloud Backend on Render
+  static const String baseUrl = 'https://digiguide.onrender.com';
   static const String predictUrl = '$baseUrl/predict';
   static const String imagesUrl = '$baseUrl/images';
   static const String landmarksUrl = '$baseUrl/landmarks';
