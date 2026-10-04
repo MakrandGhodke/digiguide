@@ -93,9 +93,5 @@ def test_me_with_token_for_deleted_user_returns_401(client):
     assert r.status_code == 401
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-3: JWT SECRET_KEY is hard-coded in a public repo, so anyone can forge tokens.",
-)
 def test_jwt_secret_is_not_hardcoded():
     assert main.SECRET_KEY != "digiguide-secret-key-2024"

@@ -78,10 +78,6 @@ def test_each_prediction_gets_a_unique_image_id(client, load_index, jpeg_bytes):
     assert first != second
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-2: an invalid upload is a client error but the API answers 500 (server error).",
-)
 def test_non_image_upload_is_a_client_error_not_a_server_error(client, load_index):
     load_index(0.0)
     r = client.post("/predict", files={"file": ("notes.txt", b"this is not an image", "text/plain")})

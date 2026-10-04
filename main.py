@@ -15,6 +15,7 @@ from PIL import Image, ImageOps
 import io
 from utils import image_to_embedding
 import uuid
+import secrets
 import bcrypt
 from jose import jwt
 from datetime import datetime, timedelta
@@ -30,7 +31,9 @@ class SignInRequest(BaseModel):
     password: str
 
 # JWT Config
-SECRET_KEY = "digiguide-secret-key-2024"
+# Set DIGIGUIDE_SECRET_KEY in the deployment environment (Render / Hugging Face secrets).
+# Without it a random key is generated per start, so existing tokens stop working after a restart.
+SECRET_KEY = os.environ.get("DIGIGUIDE_SECRET_KEY") or secrets.token_urlsafe(32)
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_DAYS = 30
 
@@ -618,6 +621,13 @@ async def predict_endpoint(
         
         # 1. Save Input Image (for feedback & diagnostics)
         contents = await file.read()
+
+        # Validate first: a bad upload is a client error (400), and must not be written to disk
+        try:
+            image = Image.open(io.BytesIO(contents)).convert("RGB")
+        except Exception:
+            raise HTTPException(status_code=400, detail="Uploaded file is not a valid image.")
+
         image_id = str(uuid.uuid4())
         temp_path = os.path.join(TEMP_DIR, f"{image_id}.jpg")
         with open(temp_path, "wb") as f:
@@ -625,7 +635,6 @@ async def predict_endpoint(
         print(f"Saved temp image: {temp_path}")
 
         # 2. Process Image with EXIF orientation correction
-        image = Image.open(io.BytesIO(contents)).convert("RGB")
         image = ImageOps.exif_transpose(image)
         
         # 3. Visual Search with Multi-Rotation Robustness
@@ -785,6 +794,8 @@ async def predict_endpoint(
             "category": "none"
         }]}
 
+    except HTTPException:
+        raise  # keep deliberate 4xx/5xx responses intact
     except Exception as e:
         print(f"Prediction error: {e}")
         import traceback
@@ -798,8 +809,14 @@ async def predict_endpoint(
 @app.get("/images/{landmark_name}/{filename}")
 async def serve_image(landmark_name: str, filename: str):
     """Smart image serving endpoint with automatic fallback to any valid image in landmark folder."""
-    base_path = os.path.join(DATASET_DIR, landmark_name)
-    file_path = os.path.join(base_path, filename)
+    dataset_root = os.path.realpath(DATASET_DIR)
+    base_path = os.path.realpath(os.path.join(dataset_root, landmark_name))
+    file_path = os.path.realpath(os.path.join(base_path, filename))
+
+    # Path-traversal guard: both paths must stay inside the dataset folder
+    if os.path.commonpath([dataset_root, base_path]) != dataset_root or \
+       os.path.commonpath([base_path, file_path]) != base_path:
+        raise HTTPException(status_code=404, detail="Image not found")
     
     # 1. Try to serve exact file
     if os.path.exists(file_path):

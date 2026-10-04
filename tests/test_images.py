@@ -33,10 +33,6 @@ def test_unknown_landmark_returns_404(client, dataset):
     assert client.get("/images/atlantis/x.jpg").status_code == 404
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="BUG-1: path traversal - '..' as landmark_name serves files outside the dataset folder.",
-)
 def test_path_traversal_cannot_read_files_outside_dataset(dataset):
     # Call the handler directly: HTTP clients normalise '..' away before it reaches the app.
     with pytest.raises(HTTPException) as exc:
