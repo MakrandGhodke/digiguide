@@ -1,0 +1,12 @@
+# Lightweight deps for the automated test suite (no torch / transformers needed:
+# the CLIP module is stubbed in tests/conftest.py)
+pytest
+httpx
+fastapi
+python-multipart
+pillow
+numpy
+faiss-cpu
+bcrypt
+python-jose[cryptography]
+requests
