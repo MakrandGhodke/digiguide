@@ -119,7 +119,9 @@ class _AIProcessingScreenState extends State<AIProcessingScreen> {
         // Continue without location
       }
 
-      final streamedResponse = await request.send();
+      final streamedResponse = await request.send().timeout(
+        const Duration(seconds: 45),
+      );
       final response = await http.Response.fromStream(streamedResponse);
 
       if (response.statusCode == 200) {
@@ -159,6 +161,8 @@ class _AIProcessingScreenState extends State<AIProcessingScreen> {
       } else {
         _showError('Server error: ${response.statusCode}');
       }
+    } on TimeoutException {
+      _showError('Server took too long to respond. The free cloud backend may have been asleep—please try snapping again!');
     } catch (e) {
       _showError('Connection error: $e');
     }

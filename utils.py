@@ -43,8 +43,9 @@ def image_to_embedding(image):
     # helper to process image if it's a path
     if isinstance(image, str):
         image = Image.open(image).convert("RGB")
-        image = ImageOps.exif_transpose(image)
-        
+    
+    # Correct orientation from EXIF (critical for phone cameras)
+    image = ImageOps.exif_transpose(image)
         
     inputs = processor(images=image, return_tensors="pt")
     # move inputs to device
@@ -53,6 +54,15 @@ def image_to_embedding(image):
     
     with torch.no_grad():
         emb = model.get_image_features(**inputs)
+        
+        # Safely extract tensor from BaseModelOutputWithPooling (transformers v5+)
+        if hasattr(emb, 'pooler_output') and emb.pooler_output is not None:
+            emb = emb.pooler_output
+        elif hasattr(emb, 'image_embeds') and emb.image_embeds is not None:
+            emb = emb.image_embeds
+        elif not isinstance(emb, torch.Tensor):
+            emb = emb[0]
+            
         # L2 normalize
         emb = emb / emb.norm(p=2, dim=-1, keepdim=True)
     

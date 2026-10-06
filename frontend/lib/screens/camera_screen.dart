@@ -33,7 +33,7 @@ class _CameraScreenState extends State<CameraScreen> {
       if (_cameras != null && _cameras!.isNotEmpty) {
         _controller = CameraController(
           _cameras!.first,
-          ResolutionPreset.high,
+          ResolutionPreset.medium,
           enableAudio: false,
         );
 
@@ -92,7 +92,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Future<void> _pickFromGallery() async {
     try {
-      final XFile? photo = await _picker.pickImage(source: ImageSource.gallery);
+      final XFile? photo = await _picker.pickImage(source: ImageSource.gallery, maxWidth: 1024, maxHeight: 1024, imageQuality: 85);
 
       if (photo != null && mounted) {
         Navigator.of(context).pushReplacementNamed(
