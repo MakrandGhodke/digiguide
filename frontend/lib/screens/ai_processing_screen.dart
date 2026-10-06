@@ -120,7 +120,7 @@ class _AIProcessingScreenState extends State<AIProcessingScreen> {
       }
 
       final streamedResponse = await request.send().timeout(
-        const Duration(seconds: 45),
+        const Duration(seconds: 90),
       );
       final response = await http.Response.fromStream(streamedResponse);
 

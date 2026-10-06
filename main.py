@@ -640,7 +640,7 @@ async def predict_endpoint(
         # 3. Visual Search with Multi-Rotation Robustness
         VISUAL_THRESHOLD = 0.85
         k = 5 
-        rotations = [0, 90, 180, 270] 
+        rotations = [0]  # Optimized for cloud deployment (EXIF handles upright orientation) 
         best_overall_match_info = None
         max_similarity = -1.0          
 
