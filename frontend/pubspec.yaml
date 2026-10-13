@@ -20,6 +20,7 @@ dependencies:
   shared_preferences: ^2.2.2
   camera: ^0.10.5+9
   flutter_tts: ^3.8.3  # <-- added for audio tour
+  google_fonts: ^6.1.0
  # share_plus: ^6.3.0  # <-- added for sharing landmarks
 
 dev_dependencies:
