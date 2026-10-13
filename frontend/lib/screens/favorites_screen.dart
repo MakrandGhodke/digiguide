@@ -34,14 +34,14 @@ class FavoritesScreen extends StatelessWidget {
                   Icon(
                     Icons.favorite_border,
                     size: 64,
-                    color: theme.colorScheme.onSurface.withOpacity(0.4),
+                    color: theme.colorScheme.onSurface.withValues(alpha: 0.4),
                   ),
                   const SizedBox(height: 16),
                   Text(
                     'No favorites yet',
                     style: TextStyle(
                       fontSize: 18,
-                      color: theme.colorScheme.onSurface.withOpacity(0.6),
+                      color: theme.colorScheme.onSurface.withValues(alpha: 0.6),
                     ),
                   ),
                 ],
@@ -76,7 +76,7 @@ class FavoritesScreen extends StatelessWidget {
                               ? Image.network(
                                   '${Config.imagesUrl}/${lm.imageAsset}',
                                   fit: BoxFit.cover,
-                                  errorBuilder: (ctx, _, __) => Container(
+                                  errorBuilder: (ctx, error, stackTrace) => Container(
                                     color: Colors.grey[300],
                                     child: Icon(
                                       Icons.broken_image,

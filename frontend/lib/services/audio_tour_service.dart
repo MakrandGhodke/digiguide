@@ -2,7 +2,7 @@ import 'package:flutter_tts/flutter_tts.dart';
 import 'package:geolocator/geolocator.dart';
 import '../models/landmark.dart';
 import 'package:flutter/foundation.dart';
-import 'dart:math' show asin, cos, sqrt, pi, sin, pow;
+import 'dart:math' show asin, cos, sqrt;
 
 class AudioTourService extends ChangeNotifier {
   final FlutterTts _flutterTts = FlutterTts();

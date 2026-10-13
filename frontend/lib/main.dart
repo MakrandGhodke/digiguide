@@ -5,6 +5,7 @@ import 'dart:io';
 import 'theme/app_theme.dart';
 import 'providers/favorites_provider.dart';
 import 'providers/theme_provider.dart';
+import 'screens/main_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/camera_screen.dart';
@@ -36,7 +37,7 @@ class DigiGuideApp extends StatelessWidget {
     // Determine initial route based on auth status
     String initialRoute;
     if (AuthService.isLoggedIn) {
-      initialRoute = HomeScreen.routeName;
+      initialRoute = MainScreen.routeName;
     } else {
       initialRoute = AuthScreen.routeName;
     }
@@ -61,7 +62,8 @@ class DigiGuideApp extends StatelessWidget {
             routes: {
               AuthScreen.routeName: (_) => const AuthScreen(),
               OnboardingScreen.routeName: (_) => const OnboardingScreen(),
-              HomeScreen.routeName: (_) => const HomeScreen(),
+              MainScreen.routeName: (_) => const MainScreen(),
+              HomeScreen.routeName: (_) => const MainScreen(),
               CameraScreen.routeName: (ctx) => const CameraScreen(),
               AIProcessingScreen.routeName: (ctx) {
                 final args =

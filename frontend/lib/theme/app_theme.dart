@@ -3,8 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
 /// DigiGuide Master Design System & Theme Engine
-/// Blends Apple Human Interface Guidelines (materials, typography, precision)
-/// with Google Material 3 Expressive (dynamic tonal colors, responsive ergonomics).
+/// Blends Apple Human Interface Guidelines with Google Material 3 Expressive.
+/// Enhanced with True OLED Pitch Black luxury dark mode.
 class AppTheme {
   AppTheme._();
 
@@ -26,21 +26,21 @@ class AppTheme {
   static const Color amber600 = Color(0xFFD97706);
 
   // ---------------------------------------------------------------------------
-  // COLOR TOKENS: Obsidian, Slate & Titanium Neutrals
+  // COLOR TOKENS: True Pitch Black OLED & Neutral Titanium Spectrum
   // ---------------------------------------------------------------------------
-  static const Color obsidian950 = Color(0xFF080C14); // Deep OLED Black
-  static const Color obsidian900 = Color(0xFF0E1420); // Dark Background
+  static const Color obsidian950 = Color(0xFF000000); // Pure OLED Pitch Black
+  static const Color obsidian900 = Color(0xFF08080A); // Deep Canvas
   static const Color slate900 = Color(0xFF0F172A);
-  static const Color slate850 = Color(0xFF162032);    // Dark Elevated Surface
-  static const Color slate800 = Color(0xFF1E293B);    // Dark Card Base
-  static const Color slate700 = Color(0xFF334155);
-  static const Color slate600 = Color(0xFF475569);
-  static const Color slate500 = Color(0xFF64748B);
-  static const Color slate400 = Color(0xFF94A3B8);
+  static const Color slate850 = Color(0xFF121214);    // Luxury Charcoal Elevated Card
+  static const Color slate800 = Color(0xFF18181B);    // Neutral Dark Card Base
+  static const Color slate700 = Color(0xFF27272A);
+  static const Color slate600 = Color(0xFF3F3F46);
+  static const Color slate500 = Color(0xFF71717A);
+  static const Color slate400 = Color(0xFFA1A1AA);
   static const Color slate300 = Color(0xFFCBD5E1);
   static const Color slate200 = Color(0xFFE2E8F0);
-  static const Color slate100 = Color(0xFFF1F5F9);
-  static const Color slate50 = Color(0xFFF8FAFC);
+  static const Color slate100 = Color(0xFFF4F4F5);
+  static const Color slate50 = Color(0xFFFAFAFA);
 
   // Light Canvas Surface
   static const Color surfacePureWhite = Color(0xFFFFFFFF);
@@ -57,8 +57,8 @@ class AppTheme {
   // TYPOGRAPHY SYSTEM: Plus Jakarta Sans / SF Pro Geometry
   // ---------------------------------------------------------------------------
   static TextTheme _buildTextTheme({required bool isDark}) {
-    final baseColor = isDark ? slate50 : slate900;
-    final secondaryColor = isDark ? slate400 : slate600;
+    final baseColor = isDark ? Colors.white : slate900;
+    final secondaryColor = isDark ? const Color(0xFFA1A1AA) : slate600;
 
     final textTheme = TextTheme(
       // Display: Bold hero headlines
@@ -132,7 +132,7 @@ class AppTheme {
       bodySmall: TextStyle(
         fontSize: 12,
         fontWeight: FontWeight.w400,
-        color: isDark ? slate500 : slate400,
+        color: isDark ? const Color(0xFF71717A) : slate400,
       ),
 
       // Labels: Pills, tags, captions
@@ -152,11 +152,10 @@ class AppTheme {
         fontSize: 11,
         fontWeight: FontWeight.w700,
         letterSpacing: 0.5,
-        color: isDark ? slate400 : slate500,
+        color: isDark ? const Color(0xFFA1A1AA) : slate500,
       ),
     );
 
-    // Apply GoogleFonts Plus Jakarta Sans with system fallbacks
     return GoogleFonts.plusJakartaSansTextTheme(textTheme);
   }
 
@@ -259,7 +258,7 @@ class AppTheme {
   }
 
   // ---------------------------------------------------------------------------
-  // DARK THEME (Obsidian Midnight, Vibrancy, OLED Optimized)
+  // DARK THEME: TRUE OLED PITCH BLACK LUXURY AESTHETICS
   // ---------------------------------------------------------------------------
   static ThemeData get darkTheme {
     final textTheme = _buildTextTheme(isDark: true);
@@ -267,7 +266,7 @@ class AppTheme {
     return ThemeData(
       useMaterial3: true,
       brightness: Brightness.dark,
-      scaffoldBackgroundColor: obsidian900,
+      scaffoldBackgroundColor: obsidian950, // Pure OLED Black #000000
       primaryColor: coral500,
       colorScheme: ColorScheme.dark(
         primary: coral500,
@@ -275,12 +274,12 @@ class AppTheme {
         primaryContainer: const Color(0xFF3F1916),
         onPrimaryContainer: coral200,
         secondary: amber400,
-        onSecondary: obsidian950,
-        surface: slate850,
-        onSurface: slate50,
-        surfaceContainerHighest: slate800,
+        onSecondary: Colors.black,
+        surface: slate850,             // #121214 (Pure neutral charcoal)
+        onSurface: Colors.white,
+        surfaceContainerHighest: slate800, // #18181B
         outline: slate700,
-        outlineVariant: const Color(0xFF26334D),
+        outlineVariant: const Color(0xFF242428), // Delicate neutral border
       ),
       textTheme: textTheme,
       appBarTheme: AppBarTheme(
@@ -289,9 +288,9 @@ class AppTheme {
         scrolledUnderElevation: 0,
         systemOverlayStyle: SystemUiOverlayStyle.light,
         centerTitle: false,
-        iconTheme: const IconThemeData(color: slate50),
+        iconTheme: const IconThemeData(color: Colors.white),
         titleTextStyle: textTheme.titleLarge?.copyWith(
-          color: slate50,
+          color: Colors.white,
           fontWeight: FontWeight.w700,
         ),
       ),
@@ -301,7 +300,7 @@ class AppTheme {
         margin: EdgeInsets.zero,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF26334D), width: 1),
+          side: const BorderSide(color: Color(0xFF242428), width: 1),
         ),
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
@@ -322,9 +321,9 @@ class AppTheme {
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: slate100,
+          foregroundColor: Colors.white,
           minimumSize: const Size(double.infinity, 52),
-          side: const BorderSide(color: Color(0xFF334155), width: 1.5),
+          side: const BorderSide(color: Color(0xFF27272A), width: 1.5),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
@@ -339,20 +338,20 @@ class AppTheme {
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFF26334D), width: 1),
+          borderSide: const BorderSide(color: Color(0xFF242428), width: 1),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
-          borderSide: const BorderSide(color: Color(0xFF26334D), width: 1),
+          borderSide: const BorderSide(color: Color(0xFF242428), width: 1),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(18),
           borderSide: const BorderSide(color: coral500, width: 2),
         ),
-        hintStyle: textTheme.bodyMedium?.copyWith(color: slate500),
-        prefixIconColor: slate500,
+        hintStyle: textTheme.bodyMedium?.copyWith(color: const Color(0xFF71717A)),
+        prefixIconColor: const Color(0xFF71717A),
       ),
-      dividerColor: const Color(0xFF1E293B),
+      dividerColor: const Color(0xFF1C1C1F),
     );
   }
 }

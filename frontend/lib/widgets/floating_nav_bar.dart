@@ -4,16 +4,19 @@ import '../theme/app_theme.dart';
 import '../theme/app_glass.dart';
 import 'tactile_bounce.dart';
 
-/// Floating Frosted Glass Bottom Navigation Dock
-/// Inspired by Apple iOS Floating Tab Bars and Google Material 3 Expressive.
+/// Ultra-Sleek Symmetrical Floating Navigation Dock
+/// Designed with Apple HIG precision, frosted glass vibrancy, and tactile haptic feedback.
 class FloatingGlassNavBar extends StatelessWidget {
+  /// Active tab index: 0 = Home, 1 = Explore, 2 = Profile
   final int currentIndex;
-  final ValueChanged<int>? onTap;
+  final ValueChanged<int>? onTabSelected;
+  final VoidCallback? onScanPressed;
 
   const FloatingGlassNavBar({
     super.key,
-    this.currentIndex = 0,
-    this.onTap,
+    required this.currentIndex,
+    this.onTabSelected,
+    this.onScanPressed,
   });
 
   @override
@@ -26,34 +29,41 @@ class FloatingGlassNavBar extends StatelessWidget {
         child: AppGlass.container(
           context: context,
           blur: AppGlass.blurRegular,
-          opacity: isDark ? 0.85 : 0.9,
+          opacity: isDark ? 0.88 : 0.92,
           borderRadius: BorderRadius.circular(32),
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
           shadows: AppShadows.floating(context),
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildNavItem(
+              // 1. Home Tab
+              _buildNavButton(
                 context,
                 index: 0,
                 icon: Icons.home_rounded,
                 label: 'Home',
                 isActive: currentIndex == 0,
               ),
-              _buildScanAction(context),
-              _buildNavItem(
+
+              // 2. Explore Tab
+              _buildNavButton(
                 context,
-                index: 2,
+                index: 1,
                 icon: Icons.explore_rounded,
                 label: 'Explore',
-                isActive: currentIndex == 2,
+                isActive: currentIndex == 1,
               ),
-              _buildNavItem(
+
+              // 3. Center Elevated AI Scan Action
+              _buildCenterScanButton(context),
+
+              // 4. Profile Tab
+              _buildNavButton(
                 context,
-                index: 3,
+                index: 2,
                 icon: Icons.person_rounded,
                 label: 'Profile',
-                isActive: currentIndex == 3,
+                isActive: currentIndex == 2,
               ),
             ],
           ),
@@ -62,7 +72,7 @@ class FloatingGlassNavBar extends StatelessWidget {
     );
   }
 
-  Widget _buildNavItem(
+  Widget _buildNavButton(
     BuildContext context, {
     required int index,
     required IconData icon,
@@ -72,43 +82,52 @@ class FloatingGlassNavBar extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return TactileBounce(
+      enableHaptic: true,
       onTap: () {
-        HapticFeedback.lightImpact();
-        onTap?.call(index);
+        HapticFeedback.selectionClick();
+        onTabSelected?.call(index);
       },
       child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
+        duration: const Duration(milliseconds: 240),
         curve: Curves.easeOutCubic,
         padding: EdgeInsets.symmetric(
-          horizontal: isActive ? 16 : 12,
+          horizontal: isActive ? 16 : 14,
           vertical: 8,
         ),
         decoration: BoxDecoration(
           color: isActive
               ? (isDark
-                  ? AppTheme.coral500.withValues(alpha: 0.18)
-                  : AppTheme.coral50.withValues(alpha: 0.9))
+                  ? const Color(0xFF222226) // Refined dark charcoal pill
+                  : AppTheme.coral50)
               : Colors.transparent,
           borderRadius: BorderRadius.circular(20),
+          border: isActive
+              ? Border.all(
+                  color: isDark
+                      ? Colors.white.withValues(alpha: 0.12)
+                      : AppTheme.coral500.withValues(alpha: 0.2),
+                  width: 1.0,
+                )
+              : null,
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(
               icon,
-              size: 22,
+              size: 20,
               color: isActive
                   ? AppTheme.coral500
-                  : (isDark ? AppTheme.slate400 : AppTheme.slate500),
+                  : (isDark ? const Color(0xFF71717A) : AppTheme.slate400),
             ),
             if (isActive) ...[
               const SizedBox(width: 6),
               Text(
                 label,
                 style: TextStyle(
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: FontWeight.w700,
-                  color: AppTheme.coral500,
+                  color: isDark ? Colors.white : AppTheme.coral600,
                   letterSpacing: -0.2,
                 ),
               ),
@@ -119,19 +138,20 @@ class FloatingGlassNavBar extends StatelessWidget {
     );
   }
 
-  /// Center elevated AI Scanner Button
-  Widget _buildScanAction(BuildContext context) {
+  /// Refined Center Scan Capsule Button
+  Widget _buildCenterScanButton(BuildContext context) {
     return TactileBounce(
+      enableHaptic: true,
       onTap: () {
         HapticFeedback.mediumImpact();
-        onTap?.call(1);
+        onScanPressed?.call();
       },
       child: Container(
-        height: 48,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        height: 42,
+        padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           gradient: AppGradients.sunsetCoral,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(21),
           boxShadow: AppShadows.coralGlow,
         ),
         child: const Row(
@@ -140,15 +160,15 @@ class FloatingGlassNavBar extends StatelessWidget {
             Icon(
               Icons.camera_alt_rounded,
               color: Colors.white,
-              size: 20,
+              size: 18,
             ),
-            SizedBox(width: 6),
+            SizedBox(width: 5),
             Text(
               'Scan',
               style: TextStyle(
                 color: Colors.white,
                 fontWeight: FontWeight.w700,
-                fontSize: 13,
+                fontSize: 12,
                 letterSpacing: 0.1,
               ),
             ),

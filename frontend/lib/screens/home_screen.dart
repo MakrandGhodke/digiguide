@@ -1,8 +1,10 @@
 import 'dart:convert';
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:http/http.dart' as http;
+import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 
 import '../config.dart';
@@ -16,6 +18,7 @@ import '../utils/responsive_layout.dart';
 import '../widgets/floating_nav_bar.dart';
 import '../widgets/shimmer_loader.dart';
 import '../widgets/tactile_bounce.dart';
+import 'ai_processing_screen.dart';
 import 'camera_screen.dart';
 import 'explore_screen.dart';
 import 'favorites_screen.dart';
@@ -23,9 +26,10 @@ import 'landmark_result_screen.dart';
 import 'profile_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  static const routeName = '/home';
+  static const routeName = '/home_view';
+  final bool isEmbeddedInShell;
 
-  const HomeScreen({super.key});
+  const HomeScreen({super.key, this.isEmbeddedInShell = false});
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -86,6 +90,26 @@ class _HomeScreenState extends State<HomeScreen> {
     } catch (e) {
       debugPrint('Weather fetch error: $e');
       if (mounted) setState(() => _loadingWeather = false);
+    }
+  }
+
+  Future<void> _pickFromGallery() async {
+    try {
+      final ImagePicker picker = ImagePicker();
+      final XFile? photo = await picker.pickImage(
+        source: ImageSource.gallery,
+        maxWidth: 1024,
+        maxHeight: 1024,
+        imageQuality: 85,
+      );
+      if (photo != null && mounted) {
+        Navigator.of(context).pushNamed(
+          AIProcessingScreen.routeName,
+          arguments: {'image': File(photo.path)},
+        );
+      }
+    } catch (e) {
+      debugPrint('Error picking from gallery: $e');
     }
   }
 
@@ -472,7 +496,7 @@ class _HomeScreenState extends State<HomeScreen> {
               // -------------------------------------------------------------
               SliverPadding(
                 padding: ResponsiveLayout.screenPadding(context).copyWith(
-                  bottom: 120, // Extra space for floating frosted nav bar
+                  bottom: 150, // Generous space so content is never covered by the dock
                 ),
                 sliver: _buildRecentDiscoveriesList(context),
               ),
@@ -480,18 +504,21 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
       ),
-      bottomNavigationBar: FloatingGlassNavBar(
-        currentIndex: 0,
-        onTap: (index) {
-          if (index == 1) {
-            Navigator.of(context).pushNamed(CameraScreen.routeName);
-          } else if (index == 2) {
-            Navigator.of(context).pushNamed(ExploreScreen.routeName);
-          } else if (index == 3) {
-            Navigator.of(context).pushNamed(ProfileScreen.routeName);
-          }
-        },
-      ),
+      bottomNavigationBar: widget.isEmbeddedInShell
+          ? null
+          : FloatingGlassNavBar(
+              currentIndex: 0,
+              onTabSelected: (index) {
+                if (index == 1) {
+                  Navigator.of(context).pushNamed(ExploreScreen.routeName);
+                } else if (index == 2) {
+                  Navigator.of(context).pushNamed(ProfileScreen.routeName);
+                }
+              },
+              onScanPressed: () {
+                Navigator.of(context).pushNamed(CameraScreen.routeName);
+              },
+            ),
     );
   }
 
@@ -664,12 +691,7 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       // Gallery Quick Picker
                       TactileBounce(
-                        onTap: () {
-                          Navigator.of(context).pushNamed(
-                            CameraScreen.routeName,
-                            arguments: {'mode': 'gallery'},
-                          );
-                        },
+                        onTap: _pickFromGallery,
                         child: Container(
                           padding: const EdgeInsets.symmetric(
                             horizontal: 14,

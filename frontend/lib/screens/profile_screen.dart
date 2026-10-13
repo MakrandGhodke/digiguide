@@ -1,175 +1,311 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import '../theme/app_theme.dart';
+
+import '../providers/favorites_provider.dart';
+import '../providers/theme_provider.dart';
 import '../services/auth_service.dart';
 import '../services/recent_history_service.dart';
-import '../models/landmark.dart';
-import '../providers/theme_provider.dart';
-import 'home_screen.dart';
-import 'camera_screen.dart';
+import '../theme/app_glass.dart';
+import '../theme/app_theme.dart';
+import '../utils/responsive_layout.dart';
+import '../widgets/floating_nav_bar.dart';
+import '../widgets/tactile_bounce.dart';
 import 'auth_screen.dart';
+import 'camera_screen.dart';
 import 'explore_screen.dart';
+import 'home_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   static const routeName = '/profile';
+  final bool isEmbeddedInShell;
 
-  const ProfileScreen({super.key});
+  const ProfileScreen({super.key, this.isEmbeddedInShell = false});
 
   @override
   State<ProfileScreen> createState() => _ProfileScreenState();
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
+  Future<void> _logout() async {
+    HapticFeedback.mediumImpact();
+    await AuthService.logout();
+    if (mounted) {
+      Navigator.of(context).pushNamedAndRemoveUntil(
+        AuthScreen.routeName,
+        (route) => false,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    final userName = AuthService.currentName?.isNotEmpty == true
+        ? AuthService.currentName!
+        : 'Makrand';
+    final userEmail = AuthService.currentEmail ?? 'makrandghodke124@gmail.com';
+
     return Scaffold(
       backgroundColor: theme.scaffoldBackgroundColor,
-      body: Column(
-        children: [
-          // Header
-          Container(
-            padding: const EdgeInsets.fromLTRB(24, 56, 24, 24),
-            decoration: const BoxDecoration(
-              gradient: LinearGradient(
-                colors: [AppTheme.slate800, AppTheme.slate900],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-            ),
+      extendBody: true,
+      body: SafeArea(
+        child: ResponsiveContainer(
+          child: SingleChildScrollView(
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 140),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white70),
-                  onPressed: () => Navigator.of(
-                    context,
-                  ).pushReplacementNamed(HomeScreen.routeName),
-                  padding: EdgeInsets.zero,
-                  alignment: Alignment.centerLeft,
-                ),
-                const SizedBox(height: 24),
+                // Top Header: Back Button (only if pushed standalone) & Title
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Container(
-                      width: 64,
-                      height: 64,
-                      decoration: const BoxDecoration(
-                        color: AppTheme.coral500,
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        color: Colors.white,
-                        size: 32,
+                    if (!widget.isEmbeddedInShell)
+                      IconButton(
+                        icon: const Icon(Icons.arrow_back_rounded),
+                        onPressed: () => Navigator.of(context).pop(),
+                      )
+                    else
+                      const SizedBox.shrink(),
+                    Text(
+                      'Account & Preferences',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w700,
+                        color: theme.colorScheme.onSurface,
+                        letterSpacing: -0.3,
                       ),
                     ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            AuthService.currentName?.isNotEmpty == true
-                                ? AuthService.currentName!
-                                : 'Explorer',
+                    const SizedBox(width: 40),
+                  ],
+                ),
+
+                const SizedBox(height: 24),
+
+                // -------------------------------------------------------------
+                // 1. AVATAR & USER PROFILE CARD
+                // -------------------------------------------------------------
+                Container(
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppTheme.slate850 : Colors.white,
+                    borderRadius: BorderRadius.circular(28),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                    boxShadow: AppShadows.subtle(context),
+                  ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 68,
+                        height: 68,
+                        decoration: BoxDecoration(
+                          gradient: AppGradients.sunsetCoral,
+                          shape: BoxShape.circle,
+                          boxShadow: AppShadows.coralGlow,
+                        ),
+                        child: Center(
+                          child: Text(
+                            userName.isNotEmpty
+                                ? userName[0].toUpperCase()
+                                : 'M',
                             style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
                               color: Colors.white,
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Text(
-                            AuthService.currentEmail ??
-                                'Discover the world with AI',
-                            style: const TextStyle(
-                              color: Colors.white70,
-                              fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              userName,
+                              style: TextStyle(
+                                fontSize: 20,
+                                fontWeight: FontWeight.w800,
+                                color: theme.colorScheme.onSurface,
+                                letterSpacing: -0.4,
+                              ),
                             ),
-                          ),
-                        ],
+                            const SizedBox(height: 2),
+                            Text(
+                              userEmail,
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: isDark
+                                    ? const Color(0xFFA1A1AA)
+                                    : AppTheme.slate500,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.coral500.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: const Text(
+                                'DigiGuide Explorer',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.coral500,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 20),
+
+                // -------------------------------------------------------------
+                // 2. TRAVEL ACTIVITY STATS ROW
+                // -------------------------------------------------------------
+                Row(
+                  children: [
+                    Expanded(
+                      child: _buildStatCard(
+                        context,
+                        title: 'Discovered',
+                        value:
+                            '${RecentHistoryService().recentLandmarksNotifier.value.length}',
+                        icon: Icons.place_rounded,
+                        color: AppTheme.coral500,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Consumer<FavoritesProvider>(
+                        builder: (context, fav, _) {
+                          return _buildStatCard(
+                            context,
+                            title: 'Saved',
+                            value: '${fav.favorites.length}',
+                            icon: Icons.favorite_rounded,
+                            color: Colors.pinkAccent,
+                          );
+                        },
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _buildStatCard(
+                        context,
+                        title: 'Cities',
+                        value: '1',
+                        icon: Icons.location_city_rounded,
+                        color: AppTheme.skyAzure,
                       ),
                     ),
                   ],
                 ),
-              ],
-            ),
-          ),
 
-          // Content
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.all(24),
-              children: [
-                // Stats
-                ValueListenableBuilder<List<Landmark>>(
-                  valueListenable:
-                      RecentHistoryService().recentLandmarksNotifier,
-                  builder: (context, landmarks, _) {
-                    final historyService = RecentHistoryService();
-                    return Row(
-                      children: [
-                        _buildStatCard(
-                          '${historyService.uniqueLandmarksCount}',
-                          'Landmarks',
-                        ),
-                        const SizedBox(width: 12),
-                        _buildStatCard(
-                          '${historyService.uniqueCitiesCount}',
-                          'Cities',
-                        ),
-                        const SizedBox(width: 12),
-                        _buildStatCard(
-                          '${historyService.uniqueCountriesCount}',
-                          'Countries',
-                        ),
-                      ],
-                    );
-                  },
-                ),
+                const SizedBox(height: 28),
 
-                const SizedBox(height: 32),
-
-                // Settings
+                // -------------------------------------------------------------
+                // 3. SETTINGS GROUP (APPLE HIG STYLE)
+                // -------------------------------------------------------------
                 Text(
                   'Settings',
-                  style: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? const Color(0xFFA1A1AA) : AppTheme.slate500,
+                    letterSpacing: 0.2,
+                  ),
                 ),
-                const SizedBox(height: 12),
-
+                const SizedBox(height: 10),
                 Container(
                   decoration: BoxDecoration(
-                    color: theme.cardTheme.color,
-                    border: Border.all(color: theme.colorScheme.outlineVariant),
-                    borderRadius: BorderRadius.circular(16),
+                    color: isDark ? AppTheme.slate850 : Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                    boxShadow: AppShadows.subtle(context),
                   ),
                   child: Column(
                     children: [
-                      _buildSettingItem(Icons.language, 'Language', 'English'),
-                      const Divider(height: 1),
+                      // Language
+                      _buildSettingsTile(
+                        context,
+                        icon: Icons.language_rounded,
+                        title: 'Language',
+                        trailingText: 'English',
+                        onTap: () {},
+                      ),
+                      Divider(
+                        height: 1,
+                        indent: 56,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : const Color(0xFFF1F5F9),
+                      ),
+                      // Dark Mode Switch
                       Consumer<ThemeProvider>(
-                        builder: (context, themeProvider, child) {
-                          return SwitchListTile(
-                            secondary: Icon(
-                              themeProvider.isDarkMode
-                                  ? Icons.dark_mode
-                                  : Icons.light_mode,
-                              color: AppTheme.slate600,
+                        builder: (context, themeProvider, _) {
+                          final isCurrentDark = themeProvider.isDarkMode;
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 16,
+                              vertical: 10,
                             ),
-                            title: Text(
-                              'Dark Mode',
-                              style: TextStyle(
-                                fontSize: 16,
-                                color: Theme.of(context).colorScheme.onSurface,
-                                fontWeight: FontWeight.w500,
-                              ),
+                            child: Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: AppTheme.coral500.withValues(alpha: 0.1),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    isCurrentDark
+                                        ? Icons.dark_mode_rounded
+                                        : Icons.light_mode_rounded,
+                                    size: 20,
+                                    color: AppTheme.coral500,
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Text(
+                                    'OLED Dark Mode',
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color: theme.colorScheme.onSurface,
+                                    ),
+                                  ),
+                                ),
+                                Switch.adaptive(
+                                  value: isCurrentDark,
+                                  activeThumbColor: AppTheme.coral500,
+                                  onChanged: (val) {
+                                    HapticFeedback.selectionClick();
+                                    themeProvider.toggleTheme(val);
+                                  },
+                                ),
+                              ],
                             ),
-                            value: themeProvider.isDarkMode,
-                            onChanged: (value) {
-                              themeProvider.toggleTheme(value);
-                            },
-                            activeColor: AppTheme.coral500,
                           );
                         },
                       ),
@@ -177,150 +313,178 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 28),
 
-                // Privacy & Trust
+                // -------------------------------------------------------------
+                // 4. PRIVACY & ARCHITECTURE GROUP
+                // -------------------------------------------------------------
                 Text(
                   'Privacy & Trust',
-                  style: theme.textTheme.titleLarge?.copyWith(fontSize: 18),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? const Color(0xFFA1A1AA) : AppTheme.slate500,
+                    letterSpacing: 0.2,
+                  ),
                 ),
-                const SizedBox(height: 12),
-
+                const SizedBox(height: 10),
                 Container(
                   decoration: BoxDecoration(
-                    color: theme.cardTheme.color,
-                    border: Border.all(color: theme.colorScheme.outlineVariant),
-                    borderRadius: BorderRadius.circular(16),
+                    color: isDark ? AppTheme.slate850 : Colors.white,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFFE2E8F0),
+                    ),
+                    boxShadow: AppShadows.subtle(context),
                   ),
                   child: Column(
                     children: [
-                      _buildSettingItem(
-                        Icons.shield_outlined,
-                        'Data & Privacy',
-                        null,
+                      _buildSettingsTile(
+                        context,
+                        icon: Icons.shield_rounded,
+                        title: 'Data & GPS Privacy',
+                        onTap: () {},
                       ),
-                      const Divider(height: 1),
-                      _buildSettingItem(
-                        Icons.info_outline,
-                        'AI Transparency',
-                        null,
+                      Divider(
+                        height: 1,
+                        indent: 56,
+                        color: isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : const Color(0xFFF1F5F9),
+                      ),
+                      _buildSettingsTile(
+                        context,
+                        icon: Icons.auto_awesome_rounded,
+                        title: 'AI Transparency & Model Docs',
+                        onTap: () {},
                       ),
                     ],
+                  ),
+                ),
+
+                const SizedBox(height: 28),
+
+                // -------------------------------------------------------------
+                // 5. SIGN OUT BUTTON
+                // -------------------------------------------------------------
+                TactileBounce(
+                  onTap: _logout,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    decoration: BoxDecoration(
+                      color: isDark
+                          ? const Color(0xFF241517)
+                          : const Color(0xFFFFF1F2),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: AppTheme.coral500.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: const Center(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.logout_rounded,
+                            color: AppTheme.coral500,
+                            size: 18,
+                          ),
+                          SizedBox(width: 8),
+                          Text(
+                            'Sign Out',
+                            style: TextStyle(
+                              color: AppTheme.coral500,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
 
                 const SizedBox(height: 16),
 
-                // AI Notice
-                Container(
-                  padding: const EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: theme.brightness == Brightness.dark
-                        ? AppTheme.slate800
-                        : AppTheme.coral50,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: theme.brightness == Brightness.dark
-                          ? AppTheme.slate700
-                          : AppTheme.coral100,
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'AI-Powered Experience',
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurface,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'DigiGuide uses AI image recognition and language models to provide curated historical and cultural information.',
-                        style: TextStyle(
-                          color: theme.colorScheme.onSurfaceVariant,
-                          fontSize: 14,
-                          height: 1.5,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                const SizedBox(height: 24),
-
-                // Logout Button
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton.icon(
-                    onPressed: () async {
-                      await AuthService.logout();
-                      if (mounted) {
-                        Navigator.of(context).pushNamedAndRemoveUntil(
-                          AuthScreen.routeName,
-                          (route) => false,
-                        );
-                      }
-                    },
-                    icon: const Icon(Icons.logout, color: Colors.red),
-                    label: const Text(
-                      'Log Out',
-                      style: TextStyle(color: Colors.red),
-                    ),
-                    style: OutlinedButton.styleFrom(
-                      side: const BorderSide(color: Colors.red),
-                      padding: const EdgeInsets.symmetric(vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                // Version info
+                Center(
+                  child: Text(
+                    'DigiGuide v1.0.0 • Darmstadt Tour Engine',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark
+                          ? const Color(0xFF71717A)
+                          : AppTheme.slate400,
                     ),
                   ),
                 ),
-
-                const SizedBox(height: 32),
               ],
             ),
           ),
-
-          // Bottom Nav
-          Container(
-            decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey[200]!)),
+        ),
+      ),
+      bottomNavigationBar: widget.isEmbeddedInShell
+          ? null
+          : FloatingGlassNavBar(
+              currentIndex: 2,
+              onTabSelected: (index) {
+                if (index == 0) {
+                  Navigator.of(context).pushNamed(HomeScreen.routeName);
+                } else if (index == 1) {
+                  Navigator.of(context).pushNamed(ExploreScreen.routeName);
+                }
+              },
+              onScanPressed: () {
+                Navigator.of(context).pushNamed(CameraScreen.routeName);
+              },
             ),
-            padding: const EdgeInsets.symmetric(vertical: 12),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNavItem(
-                  context,
-                  Icons.home_outlined,
-                  'Home',
-                  false,
-                  HomeScreen.routeName,
-                ),
-                _buildNavItem(
-                  context,
-                  Icons.qr_code_scanner,
-                  'Scan',
-                  false,
-                  CameraScreen.routeName,
-                ),
-                _buildNavItem(
-                  context,
-                  Icons.explore_outlined,
-                  'Explore',
-                  false,
-                  ExploreScreen.routeName, // Fixed Navigation
-                ),
-                _buildNavItem(
-                  context,
-                  Icons.person,
-                  'Profile',
-                  true,
-                  ProfileScreen.routeName,
-                ),
-              ],
+    );
+  }
+
+  Widget _buildStatCard(
+    BuildContext context, {
+    required String title,
+    required String value,
+    required IconData icon,
+    required Color color,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 12),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.slate850 : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFFE2E8F0),
+        ),
+        boxShadow: AppShadows.subtle(context),
+      ),
+      child: Column(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 22,
+              fontWeight: FontWeight.w800,
+              color: Theme.of(context).colorScheme.onSurface,
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 2),
+          Text(
+            title,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: isDark ? const Color(0xFFA1A1AA) : AppTheme.slate500,
             ),
           ),
         ],
@@ -328,145 +492,67 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildStatCard(String value, String label) {
-    return Expanded(
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).cardTheme.color,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: Theme.of(context).colorScheme.outlineVariant,
-          ),
-        ),
-        child: Column(
-          children: [
-            Text(
-              value,
-              style: TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-                color: Theme.of(context).colorScheme.onSurface,
-              ),
-            ),
-            Text(
-              label,
-              style: const TextStyle(fontSize: 12, color: AppTheme.slate500),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
+  Widget _buildSettingsTile(
+    BuildContext context, {
     required IconData icon,
-    required String label,
-    required String subLabel,
-    required Gradient gradient,
+    required String title,
+    String? trailingText,
     required VoidCallback onTap,
   }) {
-    return GestureDetector(
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return TactileBounce(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          gradient: gradient,
-          borderRadius: BorderRadius.circular(16),
-          boxShadow: [
-            BoxShadow(
-              color: (gradient.colors.first).withOpacity(0.3),
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         child: Row(
           children: [
-            Icon(icon, color: Colors.white, size: 24),
-            const SizedBox(width: 16),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  Text(
-                    subLabel,
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ],
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppTheme.slate800
+                    : const Color(0xFFF1F5F9),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(
+                icon,
+                size: 18,
+                color: isDark ? Colors.white70 : AppTheme.slate700,
               ),
             ),
-            const Icon(Icons.chevron_right, color: Colors.white),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Text(
+                title,
+                style: TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.onSurface,
+                ),
+              ),
+            ),
+            if (trailingText != null) ...[
+              Text(
+                trailingText,
+                style: TextStyle(
+                  fontSize: 13,
+                  color: isDark
+                      ? const Color(0xFFA1A1AA)
+                      : AppTheme.slate500,
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
+            Icon(
+              Icons.chevron_right_rounded,
+              size: 18,
+              color: isDark
+                  ? const Color(0xFF71717A)
+                  : AppTheme.slate400,
+            ),
           ],
         ),
-      ),
-    );
-  }
-
-  Widget _buildSettingItem(IconData icon, String label, String? value) {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Row(
-        children: [
-          Icon(icon, color: AppTheme.slate600, size: 20),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 16,
-                color: Theme.of(context).colorScheme.onSurface,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
-          if (value != null) ...[
-            Text(
-              value,
-              style: const TextStyle(color: AppTheme.slate500, fontSize: 14),
-            ),
-            const SizedBox(width: 8),
-          ],
-          const Icon(Icons.chevron_right, color: AppTheme.slate400, size: 20),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildNavItem(
-    BuildContext context,
-    IconData icon,
-    String label,
-    bool isActive,
-    String? route,
-  ) {
-    return GestureDetector(
-      onTap: () {
-        if (route != null && !isActive) {
-          Navigator.of(context).pushReplacementNamed(route);
-        }
-      },
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, color: isActive ? AppTheme.coral500 : AppTheme.slate400),
-          const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 10,
-              color: isActive ? AppTheme.coral500 : AppTheme.slate400,
-            ),
-          ),
-        ],
       ),
     );
   }

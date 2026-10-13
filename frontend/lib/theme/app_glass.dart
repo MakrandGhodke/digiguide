@@ -27,7 +27,7 @@ class AppGlass {
     final fill = tintColor != null
         ? tintColor.withValues(alpha: opacity)
         : isDark
-            ? const Color(0xFF161F30).withValues(alpha: opacity)
+            ? const Color(0xFF121214).withValues(alpha: opacity) // Pure neutral charcoal glass
             : Colors.white.withValues(alpha: opacity);
 
     final borderColor = isDark
@@ -42,7 +42,7 @@ class AppGlass {
           [
             BoxShadow(
               color: isDark
-                  ? Colors.black.withValues(alpha: 0.35)
+                  ? Colors.black.withValues(alpha: 0.5)
                   : const Color(0xFF0F172A).withValues(alpha: 0.06),
               blurRadius: 24,
               offset: const Offset(0, 8),
@@ -111,11 +111,11 @@ class AppGradients {
     end: Alignment.bottomRight,
   );
 
-  /// Deep Obsidian / Midnight Slate card gradient
+  /// Deep Charcoal / Neutral Pitch Black card gradient
   static const LinearGradient darkCardGradient = LinearGradient(
     colors: [
-      Color(0xFF1A2333),
-      Color(0xFF101726),
+      Color(0xFF161618),
+      Color(0xFF0C0C0E),
     ],
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
@@ -158,7 +158,7 @@ class AppShadows {
     return [
       BoxShadow(
         color: isDark
-            ? Colors.black.withValues(alpha: 0.2)
+            ? Colors.black.withValues(alpha: 0.4)
             : const Color(0xFF0F172A).withValues(alpha: 0.04),
         blurRadius: 12,
         offset: const Offset(0, 4),
@@ -171,7 +171,7 @@ class AppShadows {
     return [
       BoxShadow(
         color: isDark
-            ? Colors.black.withValues(alpha: 0.4)
+            ? Colors.black.withValues(alpha: 0.6)
             : const Color(0xFF0F172A).withValues(alpha: 0.08),
         blurRadius: 28,
         spreadRadius: -4,
@@ -179,7 +179,7 @@ class AppShadows {
       ),
       BoxShadow(
         color: isDark
-            ? Colors.black.withValues(alpha: 0.2)
+            ? Colors.black.withValues(alpha: 0.3)
             : const Color(0xFF0F172A).withValues(alpha: 0.03),
         blurRadius: 10,
         offset: const Offset(0, 2),
